@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Employee Management System (.NET MVC)</title>
+    
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+    <!-- Core Stylesheet -->
+    <link rel="stylesheet" href="~/css/site.css" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+    @{
+        var role = Context.Session.GetString("USER_ROLE");
+        var adminName = Context.Session.GetString("ADMIN_NAME");
+        var empName = Context.Session.GetString("EMPLOYEE_NAME");
+        var empCode = Context.Session.GetString("EMPLOYEE_CODE");
+    }
+
+    <header class="app-header">
+        <div class="header-container">
+            <a class="brand-logo" asp-controller="Home" asp-action="Index">
+                <div class="logo-icon"><i class="fa-solid fa-users-gear"></i></div>
+                <div class="logo-text">
+                    <span class="logo-title">EMS Pro</span>
+                    <span class="logo-badge">ASP.NET Core MVC</span>
+                </div>
+            </a>
+
+            <nav class="nav-links">
+                <a class="nav-link" asp-controller="Home" asp-action="Index">
+                    <i class="fa-solid fa-house"></i> Home
+                </a>
+
+                @if (role == "ADMIN")
+                {
+                    <a class="nav-link active" asp-controller="Admin" asp-action="Dashboard">
+                        <i class="fa-solid fa-gauge-high"></i> Admin Portal
+                    </a>
+                }
+                else if (role == "EMPLOYEE")
+                {
+                    <a class="nav-link active" asp-controller="Employee" asp-action="Dashboard">
+                        <i class="fa-solid fa-id-card-clip"></i> Employee Portal
+                    </a>
+                }
+                else
+                {
+                    <a class="nav-link" asp-controller="Account" asp-action="AdminLogin">
+                        <i class="fa-solid fa-shield-halved"></i> Admin Login
+                    </a>
+                    <a class="nav-link" asp-controller="Account" asp-action="EmployeeLogin">
+                        <i class="fa-solid fa-user-tie"></i> Employee Login
+                    </a>
+                }
+            </nav>
+
+            <div class="header-actions">
+                @if (role == "ADMIN")
+                {
+                    <div class="user-profile-badge">
+                        <div class="user-avatar admin-avatar"><i class="fa-solid fa-shield"></i></div>
+                        <div class="user-meta">
+                            <span class="user-name">@(adminName ?? "Admin")</span>
+                            <span class="user-role-label">System Administrator</span>
+                        </div>
+                    </div>
+                    <a class="btn btn-outline btn-sm" asp-controller="Account" asp-action="Logout">
+                        <i class="fa-solid fa-right-from-bracket"></i> Logout
+                    </a>
+                }
+                else if (role == "EMPLOYEE")
+                {
+                    <div class="user-profile-badge">
+                        <div class="user-avatar emp-avatar"><i class="fa-solid fa-user"></i></div>
+                        <div class="user-meta">
+                            <span class="user-name">@(empName ?? "Employee")</span>
+                            <span class="user-role-label">@empCode</span>
+                        </div>
+                    </div>
+                    <a class="btn btn-outline btn-sm" asp-controller="Account" asp-action="Logout">
+                        <i class="fa-solid fa-right-from-bracket"></i> Logout
+                    </a>
+                }
+                else
+                {
+                    <span class="db-badge">
+                        <span class="db-dot"></span> XAMPP MySQL
+                    </span>
+                }
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        @if (TempData["SuccessMessage"] != null)
+        {
+            <div class="alert alert-success">
+                <i class="fa-solid fa-circle-check"></i> @TempData["SuccessMessage"]
+            </div>
+        }
+        @if (TempData["ErrorMessage"] != null)
+        {
+            <div class="alert alert-danger">
+                <i class="fa-solid fa-triangle-exclamation"></i> @TempData["ErrorMessage"]
+            </div>
+        }
+
+        @RenderBody()
+    </main>
+
+    <footer class="app-footer">
+        <div class="footer-container">
+            <div class="footer-brand">
+                <strong>Employee Management System</strong> &bull; Converted to ASP.NET Core MVC (.NET 10)
+            </div>
+            <div class="footer-info">
+                <span><i class="fa-solid fa-database"></i> Database: MySQL (XAMPP localhost:3306)</span>
+                <span>&bull;</span>
+                <span><i class="fa-solid fa-camera"></i> Face Recognition AI Powered</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="~/js/site.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

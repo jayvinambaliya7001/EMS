@@ -1,0 +1,115 @@
+@{
+    ViewData["Title"] = "Portal Gateway";
+    bool dbConnected = ViewBag.DbConnected ?? false;
+    string dbMessage = ViewBag.DbMessage ?? "";
+}
+
+<div class="hero-section">
+    <div class="hero-badge">
+        <i class="fa-solid fa-bolt"></i> Modern Enterprise Suite
+    </div>
+    <h1 class="hero-title">Employee Management System</h1>
+    <p class="hero-subtitle">
+        Converted to <strong>ASP.NET Core MVC (.NET 10)</strong> with <strong>MySQL / XAMPP</strong> and <strong>Face Recognition AI Attendance</strong>
+    </p>
+
+    <!-- DB Status Card -->
+    <div class="db-status-banner @(dbConnected ? "status-online" : "status-offline")">
+        <div class="db-status-icon">
+            <i class="fa-solid @(dbConnected ? "fa-circle-check" : "fa-triangle-exclamation")"></i>
+        </div>
+        <div class="db-status-text">
+            <strong>@(dbConnected ? "XAMPP MySQL is Connected & Ready" : "XAMPP MySQL is Not Reachable")</strong>
+            <span>@dbMessage</span>
+        </div>
+        <form asp-controller="Home" asp-action="ReinitializeDatabase" method="post" class="db-status-btn-wrapper">
+            <button type="submit" class="btn btn-sm btn-outline">
+                <i class="fa-solid fa-arrows-rotate"></i> Sync Database
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="portal-cards-grid">
+    <!-- Admin Portal Card -->
+    <div class="portal-card admin-card">
+        <div class="card-glow"></div>
+        <div class="card-icon-wrapper admin-gradient">
+            <i class="fa-solid fa-user-shield"></i>
+        </div>
+        <div class="card-content">
+            <span class="card-tag">Administration</span>
+            <h2 class="card-title">Admin Management Portal</h2>
+            <p class="card-desc">
+                Complete control over organization employees, real-time attendance logs, leave approvals, company announcements, employee awards, and birthday tracker.
+            </p>
+            <div class="card-features">
+                <span><i class="fa-solid fa-check"></i> Employee Directory & CRUD</span>
+                <span><i class="fa-solid fa-check"></i> Live Attendance Monitoring</span>
+                <span><i class="fa-solid fa-check"></i> Leave Application Review</span>
+                <span><i class="fa-solid fa-check"></i> Announcements & Awards</span>
+            </div>
+            <a asp-controller="Account" asp-action="AdminLogin" class="btn btn-primary btn-block">
+                Enter Admin Portal <i class="fa-solid fa-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+
+    <!-- Employee Portal Card -->
+    <div class="portal-card employee-card">
+        <div class="card-glow"></div>
+        <div class="card-icon-wrapper employee-gradient">
+            <i class="fa-solid fa-id-badge"></i>
+        </div>
+        <div class="card-content">
+            <span class="card-tag">Self-Service</span>
+            <h2 class="card-title">Employee Self-Service Portal</h2>
+            <p class="card-desc">
+                Facial recognition biometric attendance with web camera, punch history tracking, leave applications, award recognition, and personal profile management.
+            </p>
+            <div class="card-features">
+                <span><i class="fa-solid fa-check"></i> AI Face Recognition Attendance</span>
+                <span><i class="fa-solid fa-check"></i> Daily Punch In / Punch Out</span>
+                <span><i class="fa-solid fa-check"></i> Leave Requests & History</span>
+                <span><i class="fa-solid fa-check"></i> Notifications & Profile</span>
+            </div>
+            <a asp-controller="Account" asp-action="EmployeeLogin" class="btn btn-secondary btn-block">
+                Enter Employee Portal <i class="fa-solid fa-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="tech-spec-section">
+    <h3 class="section-heading"><i class="fa-solid fa-cubes"></i> System Architecture & Stack</h3>
+    <div class="tech-grid">
+        <div class="tech-item">
+            <i class="fa-brands fa-microsoft tech-icon"></i>
+            <div>
+                <h4>ASP.NET Core MVC (.NET 10)</h4>
+                <p>High performance Controllers, Razor Views, Models & Session State</p>
+            </div>
+        </div>
+        <div class="tech-item">
+            <i class="fa-solid fa-database tech-icon"></i>
+            <div>
+                <h4>XAMPP MySQL / MariaDB</h4>
+                <p>MySqlConnector + Dapper ORM connecting to port 3306</p>
+            </div>
+        </div>
+        <div class="tech-item">
+            <i class="fa-solid fa-camera-retro tech-icon"></i>
+            <div>
+                <h4>Face-api.js Biometrics</h4>
+                <p>Client-side 128-d face descriptors & server Euclidean verification</p>
+            </div>
+        </div>
+        <div class="tech-item">
+            <i class="fa-solid fa-lock tech-icon"></i>
+            <div>
+                <h4>BCrypt Security</h4>
+                <p>Robust password hashing and role-based session authorization</p>
+            </div>
+        </div>
+    </div>
+</div>

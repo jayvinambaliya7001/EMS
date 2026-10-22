@@ -1,0 +1,611 @@
+@model EmployeeManagementSystemMvc.Models.EmployeeDashboardStats
+@{
+    ViewData["Title"] = "Employee Portal";
+    var emp = ViewBag.Employee as Employee ?? new Employee();
+    var attendanceHistory = ViewBag.AttendanceHistory as List<Attendance> ?? new List<Attendance>();
+    var leaveHistory = ViewBag.LeaveHistory as List<LeaveRequest> ?? new List<LeaveRequest>();
+    var awards = ViewBag.Awards as List<EmployeeAward> ?? new List<EmployeeAward>();
+    var birthdays = ViewBag.CompanyBirthdays as List<Employee> ?? new List<Employee>();
+}
+
+<div class="dashboard-wrapper">
+    <!-- Employee Sidebar -->
+    <aside class="dashboard-sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-badge employee-badge"><i class="fa-solid fa-id-badge"></i> EMPLOYEE</span>
+            <div class="sidebar-avatar-wrapper">
+                @if (!string.IsNullOrEmpty(emp.Photo))
+                {
+                    <img src="@emp.Photo" alt="@emp.FullName" class="sidebar-photo" id="sidebarPhoto" />
+                }
+                else
+                {
+                    <div class="sidebar-photo-initials" id="sidebarPhoto">
+                        <span>@(emp.FullName.Length > 0 ? emp.FullName.Substring(0, 1).ToUpper() : "E")</span>
+                    </div>
+                }
+            </div>
+            <h3>@emp.FullName</h3>
+            <span class="sidebar-subtext">@emp.EmployeeCode &bull; @(emp.Department ?? "Engineering")</span>
+        </div>
+
+        <nav class="sidebar-menu">
+            <button class="nav-tab-btn active" data-tab="emp-overview" onclick="switchEmpTab('emp-overview', this)">
+                <i class="fa-solid fa-chart-pie"></i> Overview
+            </button>
+            <button class="nav-tab-btn" data-tab="emp-attendance" onclick="switchEmpTab('emp-attendance', this)">
+                <i class="fa-solid fa-camera"></i> Face Attendance
+                @if (emp.FaceEnrolled) {
+                    <span class="badge-count badge-success">Enrolled</span>
+                } else {
+                    <span class="badge-count badge-warning">Enroll</span>
+                }
+            </button>
+            <button class="nav-tab-btn" data-tab="emp-history" onclick="switchEmpTab('emp-history', this)">
+                <i class="fa-solid fa-clock-rotate-left"></i> Punch History
+            </button>
+            <button class="nav-tab-btn" data-tab="emp-leaves" onclick="switchEmpTab('emp-leaves', this)">
+                <i class="fa-solid fa-plane-departure"></i> Apply Leave
+            </button>
+            <button class="nav-tab-btn" data-tab="emp-notifications" onclick="switchEmpTab('emp-notifications', this)">
+                <i class="fa-solid fa-bell"></i> Notifications
+                @if (Model.UnreadNotifications.Count(n => !n.IsRead) > 0) {
+                    <span class="badge-count badge-danger">@Model.UnreadNotifications.Count(n => !n.IsRead)</span>
+                }
+            </button>
+            <button class="nav-tab-btn" data-tab="emp-awards" onclick="switchEmpTab('emp-awards', this)">
+                <i class="fa-solid fa-trophy"></i> My Awards
+            </button>
+            <button class="nav-tab-btn" data-tab="emp-profile" onclick="switchEmpTab('emp-profile', this)">
+                <i class="fa-solid fa-user-gear"></i> My Profile
+            </button>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a asp-controller="Account" asp-action="Logout" class="btn btn-outline-danger btn-block btn-sm">
+                <i class="fa-solid fa-right-from-bracket"></i> Sign Out
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <section class="dashboard-main">
+
+        <!-- ================= TAB 1: OVERVIEW ================= -->
+        <div id="emp-overview" class="emp-tab-content active">
+            <div class="tab-title-bar">
+                <div>
+                    <h2>Welcome back, @emp.FullName! 👋</h2>
+                    <p class="text-muted">Here is your daily attendance summary and company highlights</p>
+                </div>
+                <div class="date-badge">
+                    <i class="fa-regular fa-calendar"></i> @DateTime.Now.ToString("dddd, dd MMM yyyy")
+                </div>
+            </div>
+
+            <!-- Punch Status Hero Banner -->
+            <div class="punch-hero-card">
+                <div class="punch-hero-info">
+                    <span class="punch-hero-label">Today's Attendance Status</span>
+                    @if (Model.TodayAttendance != null && Model.TodayAttendance.PunchIn.HasValue)
+                    {
+                        @if (Model.TodayAttendance.PunchOut.HasValue)
+                        {
+                            <h3 class="punch-hero-state state-completed">
+                                <i class="fa-solid fa-circle-check"></i> Shift Completed
+                            </h3>
+                            <p class="punch-hero-detail">
+                                In: <strong>@Model.TodayAttendance.FormattedPunchIn</strong> &bull; 
+                                Out: <strong>@Model.TodayAttendance.FormattedPunchOut</strong> &bull; 
+                                Total Time: <strong>@Model.TodayAttendance.FormattedWorkHours</strong>
+                            </p>
+                        }
+                        else
+                        {
+                            <h3 class="punch-hero-state state-in">
+                                <i class="fa-solid fa-circle-dot text-emerald pulse-icon"></i> Currently Punched In
+                            </h3>
+                            <p class="punch-hero-detail">
+                                Punched in at <strong>@Model.TodayAttendance.FormattedPunchIn</strong>. Remember to punch out before leaving.
+                            </p>
+                        }
+                    }
+                    else
+                    {
+                        <h3 class="punch-hero-state state-pending">
+                            <i class="fa-solid fa-clock"></i> Not Punched In Today
+                        </h3>
+                        <p class="punch-hero-detail">Use the Face Scanner or Quick Punch to log your attendance.</p>
+                    }
+                </div>
+
+                <div class="punch-hero-actions">
+                    <button class="btn btn-primary" onclick="switchEmpTab('emp-attendance')">
+                        <i class="fa-solid fa-camera"></i> Open Face Scanner
+                    </button>
+                    @if (Model.TodayAttendance == null || !Model.TodayAttendance.PunchIn.HasValue)
+                    {
+                        <button class="btn btn-outline" onclick="handleQuickManualPunch('PUNCH_IN')">
+                            <i class="fa-solid fa-hand"></i> Quick Punch In
+                        </button>
+                    }
+                    else if (!Model.TodayAttendance.PunchOut.HasValue)
+                    {
+                        <button class="btn btn-outline" onclick="handleQuickManualPunch('PUNCH_OUT')">
+                            <i class="fa-solid fa-hand"></i> Quick Punch Out
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <!-- Metric Cards -->
+            <div class="metrics-grid">
+                <div class="metric-card metric-blue">
+                    <div class="metric-icon"><i class="fa-solid fa-calendar-check"></i></div>
+                    <div class="metric-details">
+                        <span class="metric-label">Total Days Worked</span>
+                        <h3 class="metric-value">@Model.TotalDaysWorked</h3>
+                        <span class="metric-hint">Verified Days</span>
+                    </div>
+                </div>
+
+                <div class="metric-card metric-emerald">
+                    <div class="metric-icon"><i class="fa-solid fa-circle-check"></i></div>
+                    <div class="metric-details">
+                        <span class="metric-label">Leaves Approved</span>
+                        <h3 class="metric-value">@Model.LeavesApproved</h3>
+                        <span class="metric-hint">Current Year</span>
+                    </div>
+                </div>
+
+                <div class="metric-card metric-amber">
+                    <div class="metric-icon"><i class="fa-solid fa-hourglass-half"></i></div>
+                    <div class="metric-details">
+                        <span class="metric-label">Leaves Pending</span>
+                        <h3 class="metric-value">@Model.LeavesPending</h3>
+                        <span class="metric-hint">Under Review</span>
+                    </div>
+                </div>
+
+                <div class="metric-card metric-rose">
+                    <div class="metric-icon"><i class="fa-solid fa-trophy"></i></div>
+                    <div class="metric-details">
+                        <span class="metric-label">Awards Received</span>
+                        <h3 class="metric-value">@Model.TotalAwards</h3>
+                        <span class="metric-hint">Recognitions</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Announcements & Birthdays -->
+            <div class="dashboard-two-col">
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <h3><i class="fa-solid fa-bullhorn"></i> Company Announcements</h3>
+                    </div>
+                    <div class="announcement-list">
+                        @if (Model.RecentAnnouncements.Any())
+                        {
+                            @foreach (var ann in Model.RecentAnnouncements)
+                            {
+                                <div class="ann-item">
+                                    <div class="ann-item-header">
+                                        <span class="ann-cat-pill">@ann.Category</span>
+                                        <small class="text-muted">@ann.CreatedAt.ToString("dd MMM yyyy")</small>
+                                    </div>
+                                    <h4>@ann.Title</h4>
+                                    <p>@ann.Message</p>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <p class="text-muted">No announcements posted at this time.</p>
+                        }
+                    </div>
+                </div>
+
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <h3><i class="fa-solid fa-cake-candles text-amber"></i> Team Birthdays</h3>
+                    </div>
+                    <div class="birthdays-mini-list">
+                        @foreach (var b in birthdays.Take(5))
+                        {
+                            <div class="birthday-mini-item">
+                                <div class="b-avatar">@(b.FullName.Length > 0 ? b.FullName.Substring(0, 1) : "B")</div>
+                                <div class="b-meta">
+                                    <strong>@b.FullName</strong>
+                                    <small class="text-muted">@b.Department &bull; @(b.Dob?.ToString("dd MMM") ?? "-")</small>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= TAB 2: FACE ATTENDANCE SCANNER ================= -->
+        <div id="emp-attendance" class="emp-tab-content">
+            <div class="tab-title-bar">
+                <div>
+                    <h2>Biometric Face Attendance</h2>
+                    <p class="text-muted">Powered by <strong>face-api.js</strong> with local neural network models & webcam detection</p>
+                </div>
+                <div id="enrollmentStatusBadge">
+                    @if (emp.FaceEnrolled)
+                    {
+                        <span class="status-pill pill-emerald"><i class="fa-solid fa-shield-check"></i> Face Biometric Enrolled</span>
+                    }
+                    else
+                    {
+                        <span class="status-pill pill-amber"><i class="fa-solid fa-circle-exclamation"></i> Face Not Enrolled Yet</span>
+                    }
+                </div>
+            </div>
+
+            <div class="scanner-container-card">
+                <!-- Video Viewport -->
+                <div class="webcam-viewport-wrapper">
+                    <div id="cameraPlaceholder" class="camera-placeholder">
+                        <i class="fa-solid fa-video camera-icon"></i>
+                        <h4>Webcam is currently inactive</h4>
+                        <p>Click "Start Camera" to turn on your webcam and begin facial recognition.</p>
+                    </div>
+                    <video id="webcamVideo" autoplay muted playsinline style="display: none;"></video>
+                    <canvas id="overlayCanvas"></canvas>
+                </div>
+
+                <!-- Scanner Controls & Status -->
+                <div class="scanner-controls-panel">
+                    <div class="scanner-status-box">
+                        <span class="status-label">Scanner Status:</span>
+                        <div id="scannerMessage" class="status-message">Initializing face detection AI models...</div>
+                    </div>
+
+                    <div class="scanner-buttons">
+                        <button id="startCameraBtn" class="btn btn-primary" onclick="startWebcam()">
+                            <i class="fa-solid fa-camera"></i> Start Camera
+                        </button>
+                        <button id="stopCameraBtn" class="btn btn-outline-danger" style="display: none;" onclick="stopWebcam()">
+                            <i class="fa-solid fa-video-slash"></i> Stop Camera
+                        </button>
+                        
+                        <button id="enrollFaceBtn" class="btn btn-emerald" disabled onclick="enrollCurrentFace()">
+                            <i class="fa-solid fa-user-plus"></i> Enroll Face
+                        </button>
+                        <button id="facePunchBtn" class="btn btn-purple" disabled onclick="punchWithCurrentFace()">
+                            <i class="fa-solid fa-fingerprint"></i> Face Punch (In / Out)
+                        </button>
+                    </div>
+
+                    <div class="scanner-tips">
+                        <h5><i class="fa-solid fa-lightbulb"></i> Instructions & Best Practices:</h5>
+                        <ul>
+                            <li>Ensure good lighting facing your camera without strong backlighting.</li>
+                            <li>If this is your first time, center your face and click <strong>Enroll Face</strong>.</li>
+                            <li>Once enrolled, simply click <strong>Face Punch</strong> to Punch In (morning) and Punch Out (evening).</li>
+                            <li>Local neural weights are loaded from <code>/models</code> for maximum speed and privacy.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= TAB 3: PUNCH HISTORY ================= -->
+        <div id="emp-history" class="emp-tab-content">
+            <div class="tab-title-bar">
+                <div>
+                    <h2>My Attendance History</h2>
+                    <p class="text-muted">Detailed log of all recorded punches, methods, and work durations</p>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Work Date</th>
+                            <th>Punch In</th>
+                            <th>Punch Out</th>
+                            <th>Total Hours</th>
+                            <th>Punch Method</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="empAttendanceHistoryBody">
+                        @foreach (var att in attendanceHistory)
+                        {
+                            <tr>
+                                <td><strong>@att.WorkDate.ToString("dd MMM yyyy, dddd")</strong></td>
+                                <td><span class="time-badge">@att.FormattedPunchIn</span></td>
+                                <td><span class="time-badge">@att.FormattedPunchOut</span></td>
+                                <td>@att.FormattedWorkHours</td>
+                                <td>
+                                    <span class="method-badge @(att.PunchMethod == "FACE" ? "method-face" : "method-manual")">
+                                        <i class="fa-solid @(att.PunchMethod == "FACE" ? "fa-camera" : "fa-hand")"></i> @att.PunchMethod
+                                    </span>
+                                </td>
+                                <td><span class="status-pill pill-emerald">@att.Status</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ================= TAB 4: LEAVE REQUESTS ================= -->
+        <div id="emp-leaves" class="emp-tab-content">
+            <div class="tab-title-bar">
+                <div>
+                    <h2>Apply for Leave</h2>
+                    <p class="text-muted">Submit new leave requests and check real-time approval status</p>
+                </div>
+            </div>
+
+            <div class="dashboard-two-col">
+                <!-- Apply Form -->
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <h3><i class="fa-solid fa-pen-to-square"></i> Leave Application Form</h3>
+                    </div>
+                    <form id="applyLeaveForm" onsubmit="handleApplyLeave(event)">
+                        <div class="form-group">
+                            <label>Leave Type *</label>
+                            <select id="leaveType" class="form-control" required>
+                                <option value="Casual">Casual Leave</option>
+                                <option value="Sick">Sick Leave</option>
+                                <option value="Earned">Earned Leave</option>
+                                <option value="Maternity / Paternity">Maternity / Paternity Leave</option>
+                                <option value="Unpaid">Unpaid Leave</option>
+                            </select>
+                        </div>
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label>From Date *</label>
+                                <input type="date" id="leaveFromDate" class="form-control" value="@DateTime.Today.AddDays(1).ToString("yyyy-MM-dd")" required />
+                            </div>
+                            <div class="form-group">
+                                <label>To Date *</label>
+                                <input type="date" id="leaveToDate" class="form-control" value="@DateTime.Today.AddDays(1).ToString("yyyy-MM-dd")" required />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Reason *</label>
+                            <textarea id="leaveReason" class="form-control" rows="3" required placeholder="Please describe reason for leave..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">
+                            <i class="fa-solid fa-paper-plane"></i> Submit Application
+                        </button>
+                    </form>
+                </div>
+
+                <!-- My Past Leaves -->
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <h3><i class="fa-solid fa-clock-rotate-left"></i> My Leave Applications</h3>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Dates</th>
+                                    <th>Days</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="empLeavesTableBody">
+                                @foreach (var l in leaveHistory)
+                                {
+                                    <tr>
+                                        <td><strong>@l.LeaveType</strong></td>
+                                        <td>@l.FromDate.ToString("dd MMM") - @l.ToDate.ToString("dd MMM")</td>
+                                        <td>@l.TotalDays d</td>
+                                        <td>
+                                            <span class="status-pill @(l.Status == "APPROVED" ? "pill-emerald" : l.Status == "REJECTED" ? "pill-rose" : "pill-amber")">
+                                                @l.Status
+                                            </span>
+                                            @if (!string.IsNullOrEmpty(l.AdminNote))
+                                            {
+                                                <small class="d-block text-muted">Note: @l.AdminNote</small>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= TAB 5: NOTIFICATIONS ================= -->
+        <div id="emp-notifications" class="emp-tab-content">
+            <div class="tab-title-bar">
+                <div>
+                    <h2>My Notifications</h2>
+                    <p class="text-muted">Important updates, approval notifications, and company broadcasts</p>
+                </div>
+            </div>
+
+            <div class="notifications-list" id="notificationsContainer">
+                @foreach (var n in Model.UnreadNotifications)
+                {
+                    <div class="notif-card @(n.IsRead ? "notif-read" : "notif-unread")" data-id="@n.Id">
+                        <div class="notif-icon">
+                            <i class="fa-solid fa-bell"></i>
+                        </div>
+                        <div class="notif-content">
+                            <h4>@n.Title</h4>
+                            <p>@n.Message</p>
+                            <span class="notif-time">@n.CreatedAt.ToString("dd MMM yyyy, hh:mm tt")</span>
+                        </div>
+                        @if (!n.IsRead)
+                        {
+                            <button class="btn btn-xs btn-outline" onclick="markNotificationRead(@n.Id, this)">Mark Read</button>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- ================= TAB 6: AWARDS ================= -->
+        <div id="emp-awards" class="emp-tab-content">
+            <div class="tab-title-bar">
+                <div>
+                    <h2>My Awards & Recognitions</h2>
+                    <p class="text-muted">Badges of honor and achievements awarded by organization management</p>
+                </div>
+            </div>
+
+            <div class="awards-grid">
+                @if (awards.Any())
+                {
+                    @foreach (var a in awards)
+                    {
+                        <div class="award-card">
+                            <div class="award-icon-box">
+                                <i class="fa-solid fa-trophy"></i>
+                            </div>
+                            <div class="award-details">
+                                <span class="award-type-badge">@a.AwardType</span>
+                                <h3>@a.AwardTitle</h3>
+                                <div class="award-period"><i class="fa-solid fa-calendar"></i> @a.AwardPeriod</div>
+                                <p class="award-reason">@(string.IsNullOrEmpty(a.Reason) ? "Recognized for exceptional commitment and contribution." : a.Reason)</p>
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="empty-state">
+                        <i class="fa-solid fa-award text-amber"></i>
+                        <h4>No awards recorded yet</h4>
+                        <p>Keep shining and delivering great work!</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- ================= TAB 7: PROFILE ================= -->
+        <div id="emp-profile" class="emp-tab-content">
+            <div class="tab-title-bar">
+                <div>
+                    <h2>My Profile & Account Settings</h2>
+                    <p class="text-muted">Manage your personal information and security credentials</p>
+                </div>
+            </div>
+
+            <div class="dashboard-two-col">
+                <!-- Info / Update Contact -->
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <h3><i class="fa-solid fa-id-card"></i> Personal Information</h3>
+                    </div>
+                    <form onsubmit="handleUpdateProfile(event)">
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label>Employee Code</label>
+                                <input type="text" class="form-control" value="@emp.EmployeeCode" readonly />
+                            </div>
+                            <div class="form-group">
+                                <label>Full Name</label>
+                                <input type="text" class="form-control" value="@emp.FullName" readonly />
+                            </div>
+                            <div class="form-group">
+                                <label>Email Address</label>
+                                <input type="email" class="form-control" value="@emp.Email" readonly />
+                            </div>
+                            <div class="form-group">
+                                <label>Department</label>
+                                <input type="text" class="form-control" value="@(emp.Department ?? "Engineering")" readonly />
+                            </div>
+                            <div class="form-group">
+                                <label>Designation</label>
+                                <input type="text" class="form-control" value="@(emp.Designation ?? "Staff")" readonly />
+                            </div>
+                            <div class="form-group">
+                                <label>Phone</label>
+                                <input type="tel" id="profilePhone" class="form-control" value="@emp.Phone" placeholder="Phone Number" />
+                            </div>
+                            <div class="form-group span-2">
+                                <label>Address</label>
+                                <textarea id="profileAddress" class="form-control" rows="2">@emp.Address</textarea>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-2">
+                            <i class="fa-solid fa-floppy-disk"></i> Save Contact Info
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Profile Photo Upload -->
+                <div class="panel-card photo-upload-card">
+                    <div class="panel-header">
+                        <h3><i class="fa-solid fa-camera"></i> Profile Photo</h3>
+                    </div>
+                    <div class="photo-upload-body">
+                        <div class="current-photo-preview" id="photoPreviewContainer">
+                            @if (!string.IsNullOrEmpty(emp.Photo))
+                            {
+                                <img src="@emp.Photo" alt="Current Photo" class="photo-preview-img" id="currentPhotoPreview" />
+                            }
+                            else
+                            {
+                                <div class="photo-preview-placeholder" id="currentPhotoPreview">
+                                    <i class="fa-solid fa-user-circle"></i>
+                                    <span>No photo uploaded</span>
+                                </div>
+                            }
+                        </div>
+                        <div class="photo-upload-controls">
+                            <label class="btn btn-outline photo-file-label" for="photoFileInput">
+                                <i class="fa-solid fa-upload"></i> Choose Photo
+                            </label>
+                            <input type="file" id="photoFileInput" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="previewSelectedPhoto(this)" />
+                            <button class="btn btn-primary" id="uploadPhotoBtn" onclick="handleUploadPhoto()" disabled>
+                                <i class="fa-solid fa-floppy-disk"></i> Upload Photo
+                            </button>
+                        </div>
+                        <p class="photo-hint"><i class="fa-solid fa-circle-info"></i> Max 2MB &bull; JPG, PNG, WEBP</p>
+                    </div>
+                </div>
+
+                <!-- Change Password -->
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <h3><i class="fa-solid fa-lock"></i> Change Password</h3>
+                    </div>
+                    <form onsubmit="handleChangePassword(event)">
+                        <div class="form-group">
+                            <label>Current Password *</label>
+                            <input type="password" id="currentPassword" class="form-control" required />
+                        </div>
+                        <div class="form-group">
+                            <label>New Password (min 6 characters) *</label>
+                            <input type="password" id="newPassword" class="form-control" required minlength="6" />
+                        </div>
+                        <div class="form-group">
+                            <label>Confirm New Password *</label>
+                            <input type="password" id="confirmNewPassword" class="form-control" required minlength="6" />
+                        </div>
+                        <button type="submit" class="btn btn-secondary btn-block">
+                            <i class="fa-solid fa-key"></i> Update Password
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+    </section>
+</div>
+
+@section Scripts {
+    <!-- face-api.js neural models library -->
+    <script src="~/js/face-api.min.js"></script>
+    <!-- face recognition webcam scanner -->
+    <script src="~/js/face-scanner.js"></script>
+    <!-- employee portal script -->
+    <script src="~/js/employee.js"></script>
+}

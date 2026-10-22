@@ -1,0 +1,789 @@
+@model EmployeeManagementSystemMvc.Models.DashboardStats
+@{
+    ViewData["Title"] = "Admin Dashboard";
+    var employees = ViewBag.Employees as List<Employee> ?? new List<Employee>();
+    var announcements = ViewBag.Announcements as List<Announcement> ?? new List<Announcement>();
+    var awards = ViewBag.Awards as List<EmployeeAward> ?? new List<EmployeeAward>();
+    var birthdays = ViewBag.Birthdays as List<Employee> ?? new List<Employee>();
+}
+
+<div class="dashboard-wrapper">
+    <!-- Admin Sidebar Navigation -->
+    <aside class="dashboard-sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-badge"><i class="fa-solid fa-crown"></i> ADMIN CONTROL</span>
+            <h3>@ViewBag.AdminName</h3>
+        </div>
+
+        <nav class="sidebar-menu">
+            <button class="nav-tab-btn active" data-tab="tab-overview" onclick="switchAdminTab('tab-overview', this)">
+                <i class="fa-solid fa-chart-pie"></i> Overview
+            </button>
+            <button class="nav-tab-btn" data-tab="tab-employees" onclick="switchAdminTab('tab-employees', this)">
+                <i class="fa-solid fa-users"></i> Employees <span class="badge-count">@Model.TotalEmployees</span>
+            </button>
+            <button class="nav-tab-btn" data-tab="tab-attendance" onclick="switchAdminTab('tab-attendance', this)">
+                <i class="fa-solid fa-calendar-check"></i> Attendance <span class="badge-count">@Model.PresentToday Present</span>
+            </button>
+            <button class="nav-tab-btn" data-tab="tab-leaves" onclick="switchAdminTab('tab-leaves', this)">
+                <i class="fa-solid fa-plane-departure"></i> Leave Requests 
+                @if (Model.PendingLeaves > 0) {
+                    <span class="badge-count badge-warning">@Model.PendingLeaves Pending</span>
+                }
+            </button>
+            <button class="nav-tab-btn" data-tab="tab-announcements" onclick="switchAdminTab('tab-announcements', this)">
+                <i class="fa-solid fa-bullhorn"></i> Announcements
+            </button>
+            <button class="nav-tab-btn" data-tab="tab-awards" onclick="switchAdminTab('tab-awards', this)">
+                <i class="fa-solid fa-award"></i> Awards
+            </button>
+            <button class="nav-tab-btn" data-tab="tab-birthdays" onclick="switchAdminTab('tab-birthdays', this)">
+                <i class="fa-solid fa-cake-candles"></i> Birthdays
+            </button>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a asp-controller="Account" asp-action="Logout" class="btn btn-outline-danger btn-block btn-sm">
+                <i class="fa-solid fa-right-from-bracket"></i> Sign Out
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Dashboard Workspace -->
+    <section class="dashboard-main">
+
+        <!-- ================= TAB 1: OVERVIEW ================= -->
+        <div id="tab-overview" class="admin-tab-content active">
+            <div class="tab-title-bar">
+                <div>
+                    <h2>Administrative Overview</h2>
+                    <p class="text-muted">Real-time enterprise metrics and active employee counts</p>
+                </div>
+                <div class="date-badge">
+                    <i class="fa-regular fa-calendar"></i> @DateTime.Now.ToString("dddd, dd MMM yyyy")
+                </div>
+            </div>
+
+            <!-- Metric Cards -->
+            <div class="metrics-grid">
+                <div class="metric-card metric-blue">
+                    <div class="metric-icon"><i class="fa-solid fa-users"></i></div>
+                    <div class="metric-details">
+                        <span class="metric-label">Total Employees</span>
+                        <h3 class="metric-value" id="statTotalEmployees">@Model.TotalEmployees</h3>
+                        <span class="metric-hint"><i class="fa-solid fa-arrow-trend-up"></i> Active Personnel</span>
+                    </div>
+                </div>
+
+                <div class="metric-card metric-emerald">
+                    <div class="metric-icon"><i class="fa-solid fa-user-check"></i></div>
+                    <div class="metric-details">
+                        <span class="metric-label">Present Today</span>
+                        <h3 class="metric-value" id="statPresentToday">@Model.PresentToday</h3>
+                        <span class="metric-hint"><i class="fa-solid fa-check"></i> On Duty</span>
+                    </div>
+                </div>
+
+                <div class="metric-card metric-rose">
+                    <div class="metric-icon"><i class="fa-solid fa-user-xmark"></i></div>
+                    <div class="metric-details">
+                        <span class="metric-label">Absent Today</span>
+                        <h3 class="metric-value" id="statAbsentToday">@Model.AbsentToday</h3>
+                        <span class="metric-hint"><i class="fa-solid fa-clock"></i> Not Checked In</span>
+                    </div>
+                </div>
+
+                <div class="metric-card metric-amber">
+                    <div class="metric-icon"><i class="fa-solid fa-clock-rotate-left"></i></div>
+                    <div class="metric-details">
+                        <span class="metric-label">Pending Leaves</span>
+                        <h3 class="metric-value" id="statPendingLeaves">@Model.PendingLeaves</h3>
+                        <span class="metric-hint"><i class="fa-solid fa-hourglass-half"></i> Needs Review</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Department Distribution & Recent Leaves -->
+            <div class="dashboard-two-col">
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <h3><i class="fa-solid fa-building-user"></i> Department Distribution</h3>
+                    </div>
+                    <div class="dept-list">
+                        @foreach (var dept in Model.DepartmentCounts)
+                        {
+                            <div class="dept-item">
+                                <span class="dept-name">@dept.Department</span>
+                                <div class="dept-bar-container">
+                                    <div class="dept-bar" style="width: @(Model.TotalEmployees > 0 ? (dept.Count * 100 / Model.TotalEmployees) : 0)%"></div>
+                                </div>
+                                <span class="dept-count">@dept.Count</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <h3><i class="fa-solid fa-plane-departure"></i> Pending Leave Approvals</h3>
+                        <button class="btn btn-sm btn-outline" onclick="switchAdminTab('tab-leaves')">View All</button>
+                    </div>
+                    @if (Model.RecentLeaves.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Employee</th>
+                                        <th>Type</th>
+                                        <th>Duration</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var leave in Model.RecentLeaves.Take(5))
+                                    {
+                                        <tr>
+                                            <td>
+                                                <strong>@leave.FullName</strong>
+                                                <small class="d-block text-muted">@leave.EmployeeCode</small>
+                                            </td>
+                                            <td><span class="status-pill pill-amber">@leave.LeaveType</span></td>
+                                            <td>@leave.FromDate.ToString("dd MMM") - @leave.ToDate.ToString("dd MMM")</td>
+                                            <td>
+                                                <button class="btn btn-xs btn-success" onclick="approveLeavePrompt(@leave.Id)">Approve</button>
+                                                <button class="btn btn-xs btn-danger" onclick="rejectLeavePrompt(@leave.Id)">Reject</button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="empty-state">
+                            <i class="fa-solid fa-check-circle text-emerald"></i>
+                            <p>No pending leave requests! All reviewed.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= TAB 2: EMPLOYEES ================= -->
+        <div id="tab-employees" class="admin-tab-content">
+            <div class="tab-title-bar">
+                <div>
+                    <h2>Employee Directory</h2>
+                    <p class="text-muted">Manage all organization staff members and account records</p>
+                </div>
+                <button class="btn btn-primary" onclick="openAddEmployeeModal()">
+                    <i class="fa-solid fa-user-plus"></i> Add New Employee
+                </button>
+            </div>
+
+            <div class="table-controls">
+                <div class="search-input-wrapper">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="employeeSearchInput" placeholder="Search by name, code, department, email..." onkeyup="filterEmployeesTable()" />
+                </div>
+                <select id="employeeDeptFilter" class="select-control" onchange="filterEmployeesTable()">
+                    <option value="All">All Departments</option>
+                    @foreach (var d in Model.DepartmentCounts)
+                    {
+                        <option value="@d.Department">@d.Department</option>
+                    }
+                </select>
+            </div>
+
+            <div class="table-responsive">
+                <table class="data-table" id="employeesTable">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Department</th>
+                            <th>Designation</th>
+                            <th>Contact</th>
+                            <th>Face Bio</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="employeesTableBody">
+                        @foreach (var emp in employees)
+                        {
+                            <tr data-emp-id="@emp.Id" data-dept="@(emp.Department ?? "Engineering")">
+                                <td>
+                                    <div class="table-user-cell">
+                                        <div class="user-avatar-sm">
+                                            @if (!string.IsNullOrEmpty(emp.Photo))
+                                            {
+                                                <img src="@emp.Photo" alt="@emp.FullName" />
+                                            }
+                                            else
+                                            {
+                                                <span>@(emp.FullName.Length > 0 ? emp.FullName.Substring(0, 1) : "E")</span>
+                                            }
+                                        </div>
+                                        <div>
+                                            <div class="user-table-name">@emp.FullName</div>
+                                            <div class="user-table-sub">@emp.EmployeeCode</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><span class="dept-badge">@(emp.Department ?? "Engineering")</span></td>
+                                <td>@(emp.Designation ?? "Staff")</td>
+                                <td>
+                                    <small class="d-block"><i class="fa-solid fa-envelope"></i> @emp.Email</small>
+                                    <small class="d-block text-muted"><i class="fa-solid fa-phone"></i> @(emp.Phone ?? "-")</small>
+                                </td>
+                                <td>
+                                    @if (emp.FaceEnrolled)
+                                    {
+                                        <span class="status-pill pill-emerald"><i class="fa-solid fa-camera"></i> Enrolled</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="status-pill pill-muted"><i class="fa-solid fa-camera"></i> Pending</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="status-pill @(emp.Status == "ACTIVE" ? "pill-emerald" : "pill-rose")">
+                                        @emp.Status
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="action-btn-group">
+                                        <button class="btn btn-xs btn-outline" title="Edit Employee" onclick="openEditEmployeeModal(@emp.Id)">
+                                            <i class="fa-solid fa-pen-to-square"></i>
+                                        </button>
+                                        <button class="btn btn-xs btn-outline-danger" title="Delete Employee" onclick="deleteEmployeePrompt(@emp.Id, '@emp.FullName')">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ================= TAB 3: ATTENDANCE ================= -->
+        <div id="tab-attendance" class="admin-tab-content">
+            <div class="tab-title-bar">
+                <div>
+                    <h2>Attendance Monitoring</h2>
+                    <p class="text-muted">Real-time daily punch logs, face attendance verification, and manual entries</p>
+                </div>
+                <button class="btn btn-primary" onclick="openManualAttendanceModal()">
+                    <i class="fa-solid fa-clock"></i> Mark Manual Attendance
+                </button>
+            </div>
+
+            <div class="table-controls">
+                <div class="date-picker-wrapper">
+                    <label>Filter Date:</label>
+                    <input type="date" id="attendanceDateFilter" class="form-control" value="@DateTime.Today.ToString("yyyy-MM-dd")" onchange="loadAttendanceByFilter()" />
+                </div>
+                <select id="attendanceDeptFilter" class="select-control" onchange="loadAttendanceByFilter()">
+                    <option value="All">All Departments</option>
+                    @foreach (var d in Model.DepartmentCounts)
+                    {
+                        <option value="@d.Department">@d.Department</option>
+                    }
+                </select>
+                <button class="btn btn-outline" onclick="loadAttendanceByFilter()">
+                    <i class="fa-solid fa-arrows-rotate"></i> Refresh
+                </button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="data-table" id="attendanceTable">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Department</th>
+                            <th>Date</th>
+                            <th>Punch In</th>
+                            <th>Punch Out</th>
+                            <th>Work Hours</th>
+                            <th>Method</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendanceTableBody">
+                        @foreach (var att in Model.RecentAttendance)
+                        {
+                            <tr>
+                                <td>
+                                    <strong>@att.FullName</strong>
+                                    <small class="d-block text-muted">@att.EmployeeCode</small>
+                                </td>
+                                <td>@att.Department</td>
+                                <td>@att.WorkDate.ToString("dd MMM yyyy")</td>
+                                <td><span class="time-badge">@att.FormattedPunchIn</span></td>
+                                <td><span class="time-badge">@att.FormattedPunchOut</span></td>
+                                <td>@att.FormattedWorkHours</td>
+                                <td>
+                                    <span class="method-badge @(att.PunchMethod == "FACE" ? "method-face" : "method-manual")">
+                                        <i class="fa-solid @(att.PunchMethod == "FACE" ? "fa-camera" : "fa-hand")"></i> @att.PunchMethod
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="status-pill pill-emerald">@att.Status</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ================= TAB 4: LEAVE REQUESTS ================= -->
+        <div id="tab-leaves" class="admin-tab-content">
+            <div class="tab-title-bar">
+                <div>
+                    <h2>Leave Management</h2>
+                    <p class="text-muted">Review, approve, or reject employee leave applications</p>
+                </div>
+                <div class="filter-btn-group">
+                    <button class="btn btn-sm btn-outline active" onclick="filterLeaves('All', this)">All</button>
+                    <button class="btn btn-sm btn-outline" onclick="filterLeaves('PENDING', this)">Pending</button>
+                    <button class="btn btn-sm btn-outline" onclick="filterLeaves('APPROVED', this)">Approved</button>
+                    <button class="btn btn-sm btn-outline" onclick="filterLeaves('REJECTED', this)">Rejected</button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="data-table" id="leavesTable">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Department</th>
+                            <th>Type</th>
+                            <th>Dates</th>
+                            <th>Days</th>
+                            <th>Reason</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leavesTableBody">
+                        @foreach (var leave in Model.RecentLeaves)
+                        {
+                            <tr data-status="@leave.Status">
+                                <td>
+                                    <strong>@leave.FullName</strong>
+                                    <small class="d-block text-muted">@leave.EmployeeCode</small>
+                                </td>
+                                <td>@leave.Department</td>
+                                <td><span class="status-pill pill-blue">@leave.LeaveType</span></td>
+                                <td>@leave.FromDate.ToString("dd MMM yyyy") to @leave.ToDate.ToString("dd MMM yyyy")</td>
+                                <td>@leave.TotalDays days</td>
+                                <td><small>@leave.Reason</small></td>
+                                <td>
+                                    <span class="status-pill @(leave.Status == "APPROVED" ? "pill-emerald" : leave.Status == "REJECTED" ? "pill-rose" : "pill-amber")">
+                                        @leave.Status
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (leave.Status == "PENDING")
+                                    {
+                                        <div class="action-btn-group">
+                                            <button class="btn btn-xs btn-success" onclick="approveLeavePrompt(@leave.Id)">
+                                                <i class="fa-solid fa-check"></i> Approve
+                                            </button>
+                                            <button class="btn btn-xs btn-danger" onclick="rejectLeavePrompt(@leave.Id)">
+                                                <i class="fa-solid fa-xmark"></i> Reject
+                                            </button>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <small class="text-muted">Reviewed</small>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ================= TAB 5: ANNOUNCEMENTS ================= -->
+        <div id="tab-announcements" class="admin-tab-content">
+            <div class="tab-title-bar">
+                <div>
+                    <h2>Company Announcements</h2>
+                    <p class="text-muted">Broadcast important notices and updates across the entire team</p>
+                </div>
+                <button class="btn btn-primary" onclick="openNewAnnouncementModal()">
+                    <i class="fa-solid fa-plus"></i> New Announcement
+                </button>
+            </div>
+
+            <div class="announcements-grid" id="announcementsContainer">
+                @foreach (var ann in announcements)
+                {
+                    <div class="announcement-card" data-id="@ann.Id">
+                        <div class="ann-header">
+                            <span class="ann-cat-pill">@ann.Category</span>
+                            <button class="btn-delete-ann" onclick="deleteAnnouncementPrompt(@ann.Id)" title="Delete">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                        <h3 class="ann-title">@ann.Title</h3>
+                        <p class="ann-message">@ann.Message</p>
+                        <div class="ann-meta">
+                            <span><i class="fa-solid fa-user-pen"></i> @ann.CreatedBy</span>
+                            <span><i class="fa-regular fa-clock"></i> @ann.CreatedAt.ToString("dd MMM yyyy, hh:mm tt")</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- ================= TAB 6: AWARDS ================= -->
+        <div id="tab-awards" class="admin-tab-content">
+            <div class="tab-title-bar">
+                <div>
+                    <h2>Employee Recognition & Awards</h2>
+                    <p class="text-muted">Celebrate stellar achievements, hard work, and monthly milestones</p>
+                </div>
+                <button class="btn btn-primary" onclick="openIssueAwardModal()">
+                    <i class="fa-solid fa-trophy"></i> Issue New Award
+                </button>
+            </div>
+
+            <div class="awards-grid" id="awardsContainer">
+                @foreach (var aw in awards)
+                {
+                    <div class="award-card" data-id="@aw.Id">
+                        <div class="award-icon-box">
+                            <i class="fa-solid fa-award"></i>
+                        </div>
+                        <div class="award-details">
+                            <span class="award-type-badge">@aw.AwardType</span>
+                            <h3 class="award-title">@aw.AwardTitle</h3>
+                            <div class="award-recipient">
+                                <strong>@aw.FullName</strong> &bull; @aw.Department
+                            </div>
+                            <p class="award-reason">@(string.IsNullOrEmpty(aw.Reason) ? "Outstanding contributions and team leadership." : aw.Reason)</p>
+                            <div class="award-footer">
+                                <span><i class="fa-regular fa-calendar-check"></i> @aw.AwardPeriod</span>
+                                <button class="btn btn-xs btn-outline-danger" onclick="deleteAwardPrompt(@aw.Id)">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- ================= TAB 7: BIRTHDAYS ================= -->
+        <div id="tab-birthdays" class="admin-tab-content">
+            <div class="tab-title-bar">
+                <div>
+                    <h2>Birthday Tracker</h2>
+                    <p class="text-muted">Keep track of team celebrations and upcoming employee birthdays</p>
+                </div>
+            </div>
+
+            <div class="birthdays-grid">
+                @foreach (var b in birthdays)
+                {
+                    <div class="birthday-card">
+                        <div class="birthday-avatar">
+                            <span>@(b.FullName.Length > 0 ? b.FullName.Substring(0, 1) : "B")</span>
+                        </div>
+                        <div class="birthday-info">
+                            <h4>@b.FullName</h4>
+                            <span class="birthday-dept">@b.Department</span>
+                            <div class="birthday-date">
+                                <i class="fa-solid fa-cake-candles text-amber"></i> @(b.Dob?.ToString("dd MMMM") ?? "-")
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+    </section>
+</div>
+
+<!-- ================= MODALS ================= -->
+
+<!-- Add Employee Modal -->
+<div class="modal-overlay" id="addEmployeeModal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-user-plus"></i> Add New Employee</h3>
+            <button class="modal-close-btn" onclick="closeModal('addEmployeeModal')">&times;</button>
+        </div>
+        <form id="addEmployeeForm" onsubmit="handleCreateEmployee(event)">
+            <div class="modal-body form-grid-2">
+                <div class="form-group">
+                    <label>Employee Code *</label>
+                    <input type="text" id="addEmpCode" class="form-control" required placeholder="e.g. EMP004" />
+                </div>
+                <div class="form-group">
+                    <label>Full Name *</label>
+                    <input type="text" id="addFullName" class="form-control" required placeholder="Full Name" />
+                </div>
+                <div class="form-group">
+                    <label>Email *</label>
+                    <input type="email" id="addEmail" class="form-control" required placeholder="email@company.com" />
+                </div>
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input type="tel" id="addPhone" class="form-control" placeholder="Phone Number" />
+                </div>
+                <div class="form-group">
+                    <label>Department</label>
+                    <select id="addDepartment" class="form-control">
+                        <option value="Engineering">Engineering</option>
+                        <option value="Human Resources">Human Resources</option>
+                        <option value="Marketing">Marketing</option>
+                        <option value="Finance">Finance</option>
+                        <option value="Sales">Sales</option>
+                        <option value="Operations">Operations</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Designation</label>
+                    <input type="text" id="addDesignation" class="form-control" placeholder="e.g. Software Engineer" />
+                </div>
+                <div class="form-group">
+                    <label>Salary (Monthly ₹)</label>
+                    <input type="number" id="addSalary" class="form-control" value="50000" />
+                </div>
+                <div class="form-group">
+                    <label>Date of Birth</label>
+                    <input type="date" id="addDob" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label>Gender</label>
+                    <select id="addGender" class="form-control">
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Initial Password</label>
+                    <input type="text" id="addPassword" class="form-control" value="employee123" />
+                </div>
+                <div class="form-group span-2">
+                    <label>Address</label>
+                    <textarea id="addAddress" class="form-control" rows="2" placeholder="Residential Address"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeModal('addEmployeeModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> Save Employee</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Employee Modal -->
+<div class="modal-overlay" id="editEmployeeModal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-user-pen"></i> Edit Employee</h3>
+            <button class="modal-close-btn" onclick="closeModal('editEmployeeModal')">&times;</button>
+        </div>
+        <form id="editEmployeeForm" onsubmit="handleUpdateEmployee(event)">
+            <input type="hidden" id="editEmpId" />
+            <div class="modal-body form-grid-2">
+                <div class="form-group">
+                    <label>Employee Code</label>
+                    <input type="text" id="editEmpCode" class="form-control" readonly />
+                </div>
+                <div class="form-group">
+                    <label>Full Name *</label>
+                    <input type="text" id="editFullName" class="form-control" required />
+                </div>
+                <div class="form-group">
+                    <label>Email *</label>
+                    <input type="email" id="editEmail" class="form-control" required />
+                </div>
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input type="tel" id="editPhone" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label>Department</label>
+                    <select id="editDepartment" class="form-control">
+                        <option value="Engineering">Engineering</option>
+                        <option value="Human Resources">Human Resources</option>
+                        <option value="Marketing">Marketing</option>
+                        <option value="Finance">Finance</option>
+                        <option value="Sales">Sales</option>
+                        <option value="Operations">Operations</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Designation</label>
+                    <input type="text" id="editDesignation" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label>Salary (Monthly ₹)</label>
+                    <input type="number" id="editSalary" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="editStatus" class="form-control">
+                        <option value="ACTIVE">ACTIVE</option>
+                        <option value="INACTIVE">INACTIVE</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeModal('editEmployeeModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Update Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Manual Attendance Modal -->
+<div class="modal-overlay" id="manualAttendanceModal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-clock"></i> Mark Manual Attendance</h3>
+            <button class="modal-close-btn" onclick="closeModal('manualAttendanceModal')">&times;</button>
+        </div>
+        <form onsubmit="handleSaveManualAttendance(event)">
+            <div class="modal-body form-grid-2">
+                <div class="form-group span-2">
+                    <label>Select Employee *</label>
+                    <select id="manualEmpId" class="form-control" required>
+                        @foreach (var emp in employees)
+                        {
+                            <option value="@emp.Id">@emp.FullName (@emp.EmployeeCode) - @emp.Department</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Work Date *</label>
+                    <input type="date" id="manualDate" class="form-control" value="@DateTime.Today.ToString("yyyy-MM-dd")" required />
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="manualStatus" class="form-control">
+                        <option value="PRESENT">PRESENT</option>
+                        <option value="LATE">LATE</option>
+                        <option value="HALF_DAY">HALF DAY</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Punch In Time *</label>
+                    <input type="time" id="manualPunchIn" class="form-control" value="09:00" required />
+                </div>
+                <div class="form-group">
+                    <label>Punch Out Time</label>
+                    <input type="time" id="manualPunchOut" class="form-control" value="18:00" />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeModal('manualAttendanceModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Attendance</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- New Announcement Modal -->
+<div class="modal-overlay" id="newAnnouncementModal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-bullhorn"></i> Broadcast Announcement</h3>
+            <button class="modal-close-btn" onclick="closeModal('newAnnouncementModal')">&times;</button>
+        </div>
+        <form onsubmit="handleCreateAnnouncement(event)">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Title *</label>
+                    <input type="text" id="annTitle" class="form-control" required placeholder="Announcement headline" />
+                </div>
+                <div class="form-group">
+                    <label>Category</label>
+                    <select id="annCategory" class="form-control">
+                        <option value="General">General</option>
+                        <option value="Event">Event & Celebration</option>
+                        <option value="HR Policy">HR Policy</option>
+                        <option value="Holiday">Holiday Notice</option>
+                        <option value="Urgent">Urgent</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Message Content *</label>
+                    <textarea id="annMessage" class="form-control" rows="4" required placeholder="Detailed message to employees..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeModal('newAnnouncementModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Broadcast Notice</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Issue Award Modal -->
+<div class="modal-overlay" id="issueAwardModal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-trophy"></i> Issue Employee Award</h3>
+            <button class="modal-close-btn" onclick="closeModal('issueAwardModal')">&times;</button>
+        </div>
+        <form onsubmit="handleCreateAward(event)">
+            <div class="modal-body form-grid-2">
+                <div class="form-group span-2">
+                    <label>Select Recipient *</label>
+                    <select id="awardEmpId" class="form-control" required>
+                        @foreach (var emp in employees)
+                        {
+                            <option value="@emp.Id">@emp.FullName (@emp.EmployeeCode) - @emp.Department</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Award Type *</label>
+                    <select id="awardType" class="form-control">
+                        <option value="Employee of the Month">Employee of the Month</option>
+                        <option value="Star Performer">Star Performer</option>
+                        <option value="Best Team Player">Best Team Player</option>
+                        <option value="Innovation Champion">Innovation Champion</option>
+                        <option value="Punctuality Master">Punctuality Master</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Award Title *</label>
+                    <input type="text" id="awardTitle" class="form-control" required placeholder="e.g. Q1 Star Performer" />
+                </div>
+                <div class="form-group">
+                    <label>Period / Month *</label>
+                    <input type="text" id="awardPeriod" class="form-control" required value="@DateTime.Now.ToString("MMMM yyyy")" />
+                </div>
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="date" id="awardDate" class="form-control" value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="form-group span-2">
+                    <label>Reason / Citation</label>
+                    <textarea id="awardReason" class="form-control" rows="3" placeholder="Reason for recognition..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeModal('issueAwardModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-award"></i> Issue Award</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/admin.js"></script>
+}
